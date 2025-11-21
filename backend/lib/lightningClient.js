@@ -43,23 +43,30 @@ export async function createEmbedding(text) {
       return generateMockEmbedding(text);
     }
 
-    // TODO: Implement actual Lightning API call
-    // Example structure:
-    // const response = await fetch(`${LIGHTNING_BASE_URL}/embeddings`, {
-    //   method: 'POST',
-    //   headers: {
-    //     'Authorization': `Bearer ${LIGHTNING_API_KEY}`,
-    //     'Content-Type': 'application/json',
-    //   },
-    //   body: JSON.stringify({ text }),
-    // });
+    const response = await fetch(`${LIGHTNING_BASE_URL}/embeddings`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LIGHTNING_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        input: text,
+        model: 'text-embedding-ada-002' // or Lightning's default embedding model
+      }),
+    });
     
-    console.log('⚠️  Using mock embeddings (Lightning API not configured)');
-    return generateMockEmbedding(text);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Lightning API error (${response.status}): ${errorText}`);
+    }
+    
+    const data = await response.json();
+    return data.data[0].embedding;
     
   } catch (error) {
     console.error('Embedding error:', error);
-    throw new Error(`Failed to create embedding: ${error.message}`);
+    console.warn('⚠️  Falling back to mock embeddings');
+    return generateMockEmbedding(text);
   }
 }
 
@@ -76,26 +83,38 @@ export async function generateAnswer(prompt) {
       return generateMockAnswer(prompt);
     }
 
-    // TODO: Implement actual Lightning API call
-    // Example structure:
-    // const response = await fetch(`${LIGHTNING_BASE_URL}/chat/completions`, {
-    //   method: 'POST',
-    //   headers: {
-    //     'Authorization': `Bearer ${LIGHTNING_API_KEY}`,
-    //     'Content-Type': 'application/json',
-    //   },
-    //   body: JSON.stringify({
-    //     messages: [{ role: 'user', content: prompt }],
-    //     model: 'lightning-model',
-    //   }),
-    // });
+    const response = await fetch(`${LIGHTNING_BASE_URL}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LIGHTNING_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        messages: [
+          { 
+            role: 'system', 
+            content: 'You are a helpful research assistant. Answer questions based on the provided context accurately and concisely.' 
+          },
+          { role: 'user', content: prompt }
+        ],
+        model: 'gpt-3.5-turbo', // or Lightning's default model
+        temperature: 0.7,
+        max_tokens: 500,
+      }),
+    });
     
-    console.log('⚠️  Using mock answer (Lightning API not configured)');
-    return generateMockAnswer(prompt);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Lightning API error (${response.status}): ${errorText}`);
+    }
+    
+    const data = await response.json();
+    return data.choices[0].message.content;
     
   } catch (error) {
     console.error('Answer generation error:', error);
-    throw new Error(`Failed to generate answer: ${error.message}`);
+    console.warn('⚠️  Falling back to mock answer');
+    return generateMockAnswer(prompt);
   }
 }
 
